@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
+	<beans xmlns="http://www.springframework.org/schema/beans"  
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+    xmlns:aop="http://www.springframework.org/schema/aop"  
+    xmlns:context="http://www.springframework.org/schema/context" 
+    xmlns:tx="http://www.springframework.org/schema/tx"  
+    xmlns:jpa="http://www.springframework.org/schema/data/jpa"  
+    xmlns:security="http://www.springframework.org/schema/security"  
+    xsi:schemaLocation="  
+        http://www.springframework.org/schema/aop   
+        http://www.springframework.org/schema/aop/spring-aop-4.0.xsd  
+        http://www.springframework.org/schema/security   
+        http://www.springframework.org/schema/security/spring-security-3.2.xsd  
+        http://www.springframework.org/schema/beans   
+        http://www.springframework.org/schema/beans/spring-beans-4.0.xsd  
+        http://www.springframework.org/schema/data/jpa   
+        http://www.springframework.org/schema/data/jpa/spring-jpa-1.3.xsd  
+        http://www.springframework.org/schema/tx   
+        http://www.springframework.org/schema/tx/spring-tx-4.0.xsd  
+        http://www.springframework.org/schema/context   
+        http://www.springframework.org/schema/context/spring-context-4.0.xsd">
+    
+    <!-- 加载属性文件 -->
+    <context:property-placeholder location="classpath:datasource.properties"/>
+   
+    <!-- 配置数据源 -->
+    <bean id="dataBaseInfo"
+          class="org.apache.commons.dbcp.BasicDataSource" destroy-method="close">
+        <property name="url">
+            <value>${jdbc.dbcp.url}</value>
+        </property>
+        <property name="driverClassName">
+            <value>${jdbc.driverClassName}</value>
+        </property>
+        <property name="username">
+            <value>${jdbc.username}</value>
+        </property>
+        <property name="password">
+            <value>${jdbc.password}</value>
+        </property>
+        <!-- 连接池中的最大的连接数 -->
+        <property name="maxActive">
+            <value>${jdbc.maxActive}</value>
+        </property>
+        <!-- 最大等待的时间 (单位:毫秒) -->
+        <property name="maxWait">
+            <value>${jdbc.maxWait}</value>
+        </property>
+    </bean>
+
+    <bean id="entityManagerFactory" class="org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean">
+        <property name="dataSource" ref="dataBaseInfo" />
+        <property name="packagesToScan" value="com.fh.shop.entity" />
+        <property name="jpaVendorAdapter">
+            <bean class="org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter"/>
+        </property>
+        <property name="jpaProperties">
+            <props>
+                <prop key="hibernate.ejb.naming_strategy">org.hibernate.cfg.ImprovedNamingStrategy</prop>
+                <prop key="hibernate.dialect">org.hibernate.dialect.MySQL5InnoDBDialect</prop>
+                <!--自动创建表，表字段和实体类一一对应value="com.fh.shop.entity"-->
+                <prop key="hibernate.show_sql">true</prop>
+                <prop key="hibernate.format_sql">true</prop>
+                <prop key="hibernate.hbm2ddl.auto">update</prop>
+            </props>
+        </property>
+    </bean>
+
+
+
+    <!--3 配置事务管理器-->
+    <bean id="transactionManager" class="org.springframework.orm.jpa.JpaTransactionManager">
+        <property name="entityManagerFactory" ref="entityManagerFactory"/>
+    </bean>
+
+
+    <!-- 配置事务的传播特性 -->
+    <tx:advice id="txAdvice" transaction-manager="transactionManager"><!-- 配置事务管理器 -->
+        <tx:attributes>
+            <tx:method name="add*" propagation="REQUIRED" rollback-for="Exception"/>
+            <tx:method name="insert*" propagation="REQUIRED" rollback-for="Exception"/>
+            <tx:method name="batch*" propagation="REQUIRED" rollback-for="Exception"/>
+            <tx:method name="save*" propagation="REQUIRED" rollback-for="Exception"/>
+            <tx:method name="del*" propagation="REQUIRED" rollback-for="Exception"/>
+            <tx:method name="modify*" propagation="REQUIRED" rollback-for="Exception"/>
+            <tx:method name="update*" propagation="REQUIRED" rollback-for="Exception"/>
+            <tx:method name="reset*" propagation="REQUIRED" rollback-for="Exception"/>
+            <tx:method name="increase*" propagation="REQUIRED" rollback-for="Exception"/>
+            <tx:method name="*" read-only="true"/>
+            <!-- 如果不是以上三种，则配置成只读事务(如select)。只读事务可以提高性能，当更新某个对象时，将不会再做脏数据检查。(因为是只读的并不用更新，所以不用再作比较,判断是否读取到脏数据。) -->
+        </tx:attributes>
+    </tx:advice>
+    <!-- .. 代表改包下任意嵌套层次的子包 -->
+    <aop:config>
+        <aop:advisor pointcut="execution(* com.fh.shop.biz..*.*(..))" advice-ref="txAdvice"/>
+    </aop:config>
+
+    <!--扫描持久层-->
+    <jpa:repositories base-package="com.fh.shop.repository"  entity-manager-factory-ref="entityManagerFactory" />
+    
+    <context:component-scan base-package="com.fh.shop.biz"/>
+
+
+</beans>
